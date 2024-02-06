@@ -99,19 +99,8 @@ namespace Internal.Runtime
         /// <summary>
         /// Gets a value indicating whether the statically generated data structures use relative pointers.
         /// </summary>
-        internal static bool SupportsRelativePointers 
-        {
-            [Intrinsic]
-            get 
-            {
-                //Throw?
-                //uint index;
-                //IntPtr _elements;
-                //int* pRelPtr32 = &((int*)_elements)[index];
-                //return (IntPtr)((byte*)pRelPtr32 + *pRelPtr32);
-                return default;
-            }
-        }
+        [Intrinsic]
+        internal static extern bool SupportsRelativePointers(); //get_
 
         internal ushort ComponentSize => _usComponentSize;
 
@@ -220,7 +209,7 @@ namespace Internal.Runtime
         	get 
             {
         		//Debug.Assert(IsGeneric);
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<IatAwarePointer<MethodTable>>(EETypeField.ETF_GenericDefinition).Value;
 
         		return GetField<IatAwareRelativePointer<MethodTable>>(EETypeField.ETF_GenericDefinition).Value;
@@ -232,7 +221,7 @@ namespace Internal.Runtime
         	get 
             {
         		//Debug.Assert(IsGeneric);
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<Pointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->Arity;
 
         		return GetField<RelativePointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->Arity;
@@ -244,7 +233,7 @@ namespace Internal.Runtime
         	get 
             {
         		//Debug.Assert(IsGeneric);
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<Pointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->GenericArguments;
 
         		return GetField<RelativePointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->GenericArguments;
@@ -260,7 +249,7 @@ namespace Internal.Runtime
         		if (!HasGenericVariance)
         			return null;
 
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<Pointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->GenericVariance;
 
         		return GetField<RelativePointer<GenericComposition>>(EETypeField.ETF_GenericComposition).Value->GenericVariance;
@@ -486,7 +475,7 @@ namespace Internal.Runtime
             {
                 //Debug.Assert(IsFinalizable);
 
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<Pointer>(EETypeField.ETF_Finalizer).Value;
 
         		return GetField<RelativePointer>(EETypeField.ETF_Finalizer).Value;
@@ -624,7 +613,7 @@ namespace Internal.Runtime
         		if (!HasOptionalFields)
         			return null;
 
-        		if (IsDynamicType || !SupportsRelativePointers)
+        		if (IsDynamicType || !SupportsRelativePointers())
         			return GetField<Pointer<byte>>(EETypeField.ETF_OptionalFieldsPtr).Value;
 
         		return GetField<RelativePointer<byte>>(EETypeField.ETF_OptionalFieldsPtr).Value;
@@ -829,7 +818,7 @@ namespace Internal.Runtime
             //Debug.Assert((RareFlags & EETypeRareFlags.HasSealedVTableEntriesFlag) != 0);
             fixed (MethodTable* pThis = &this)
             {
-                if (IsDynamicType || !SupportsRelativePointers)
+                if (IsDynamicType || !SupportsRelativePointers())
                 {
                     uint cbSealedVirtualSlotsTypeOffset = GetFieldOffset(EETypeField.ETF_SealedVirtualSlots);
                     IntPtr* pSealedVirtualsSlotTable = *(IntPtr**)((byte*)pThis + cbSealedVirtualSlotsTypeOffset);
@@ -852,7 +841,7 @@ namespace Internal.Runtime
         	}
         	cbOffset += (uint)(sizeof(EEInterfaceInfo) * NumInterfaces);
 
-        	uint relativeOrFullPointerOffset = (IsDynamicType || !SupportsRelativePointers ? (uint)IntPtr.Size : 4u);
+        	uint relativeOrFullPointerOffset = (IsDynamicType || !SupportsRelativePointers() ? (uint)IntPtr.Size : 4u);
 
         	// Followed by the type manager indirection cell.
         	if (eField == EETypeField.ETF_TypeManagerIndirection) 
