@@ -51,7 +51,7 @@ namespace Internal.Runtime.CompilerHelpers
         static void RhpPinvokeReturn(IntPtr frame) { }
 
         [RuntimeExport("RhpNewFast")]
-        static unsafe object RhpNewFast(EEType* pEEType)
+        static unsafe object RhpNewFast(MethodTable* pEEType)
         {
             var size = pEEType->BaseSize;
 
@@ -71,7 +71,7 @@ namespace Internal.Runtime.CompilerHelpers
         public static extern nint malloc(ulong size);
 
         [RuntimeExport("RhpNewArray")]
-        internal static unsafe object RhpNewArray(EEType* pEEType, int length)
+        internal static unsafe object RhpNewArray(MethodTable* pEEType, int length)
         {
             var size = pEEType->BaseSize + (ulong)length * pEEType->ComponentSize;
 
@@ -123,7 +123,7 @@ namespace Internal.Runtime.CompilerHelpers
         }
 
         [RuntimeExport("RhTypeCast_IsInstanceOfClass")]
-        public static unsafe object RhTypeCast_IsInstanceOfClass(EEType* pTargetType, object obj)
+        public static unsafe object RhTypeCast_IsInstanceOfClass(MethodTable* pTargetType, object obj)
         {
             if (obj == null)
                 return null;
@@ -193,7 +193,7 @@ namespace Internal.Runtime.CompilerHelpers
 
                 if ((blockAddr & GCStaticRegionConstants.Uninitialized) == GCStaticRegionConstants.Uninitialized)
                 {
-                    var obj = RhpNewFast((EEType*)(blockAddr & ~GCStaticRegionConstants.Mask));
+                    var obj = RhpNewFast((MethodTable*)(blockAddr & ~GCStaticRegionConstants.Mask));
 
                     if ((blockAddr & GCStaticRegionConstants.HasPreInitializedData) == GCStaticRegionConstants.HasPreInitializedData)
                     {

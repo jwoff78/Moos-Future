@@ -4,7 +4,13 @@ namespace System
 {
 	public struct Char
 	{
-		public override string ToString()
+        private char _value;
+
+        public const char MaxValue = '\uffff';
+
+        public const char MinValue = '\0';
+
+        public override string ToString()
 		{
 			string r = " ";
 			r._firstChar = this;

@@ -1,13 +1,13 @@
 using Internal.Runtime;
 using Internal.Runtime.CompilerHelpers;
-using static Internal.Runtime.EEType;
+using static Internal.Runtime.MethodTable;
 
 namespace System.Runtime
 {
     public static class TypeCast
     {
         [RuntimeExport("RhTypeCast_CheckCastClass")]
-        public static unsafe object CheckCastClass(EEType* pTargetEEType, object obj)
+        public static unsafe object CheckCastClass(MethodTable* pTargetEEType, object obj)
         {
             // a null value can be cast to anything
             if (obj == null)
@@ -28,7 +28,7 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhTypeCast_CheckCastArray")]
-        public static unsafe object CheckCastArray(EEType* pTargetEEType, object obj)
+        public static unsafe object CheckCastArray(MethodTable* pTargetEEType, object obj)
         {
             // a null value can be cast to anything
             if (obj == null)
@@ -49,14 +49,14 @@ namespace System.Runtime
         }
 
         [RuntimeExport("RhTypeCast_IsInstanceOfArray")]
-        public static unsafe object IsInstanceOfArray(EEType* pTargetType, object obj)
+        public static unsafe object IsInstanceOfArray(MethodTable* pTargetType, object obj)
         {
             if (obj == null)
             {
                 return null;
             }
 
-            EEType* pObjType = obj.m_pEEType;
+            MethodTable* pObjType = obj.m_pEEType;
 
             // if the types match, we are done
             if (pObjType == pTargetType)

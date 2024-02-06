@@ -2,10 +2,13 @@
 {
 	public struct Int32
 	{
-		public const int MaxValue = 0x7fffffff;
-		public const int MinValue = unchecked((int)0x80000000);
+        private int _value;
 
-		public override string ToString()
+        public const int MaxValue = 2147483647;
+
+        public const int MinValue = -2147483648;
+
+        public override string ToString()
 		{
 			return ((long)this).ToString();
 		}

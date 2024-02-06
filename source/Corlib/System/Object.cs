@@ -7,7 +7,7 @@ namespace System
     public unsafe class Object
     {
         // The layout of object is a contract with the compiler.
-        internal unsafe EEType* m_pEEType;
+        internal unsafe MethodTable* m_pEEType;
 
         [StructLayout(LayoutKind.Sequential)]
         private class RawData
@@ -20,9 +20,14 @@ namespace System
             return ref Unsafe.As<RawData>(this).Data;
         }
 
+        internal unsafe MethodTable* GetMethodTable()
+        {
+            return m_pEEType;
+        }
+
         internal uint GetRawDataSize()
         {
-            return m_pEEType->BaseSize - (uint)sizeof(ObjHeader) - (uint)sizeof(EEType*);
+            return (uint)((int)GetMethodTable()->BaseSize - sizeof(ObjHeader) - sizeof(MethodTable*));
         }
 
         public Object() { }

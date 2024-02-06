@@ -20,6 +20,15 @@ namespace Internal.Runtime.CompilerServices
         [Intrinsic]
         public static extern ref T AsRef<T>(void* pointer);
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        [Intrinsic]
+        public static extern ref T AsRef<T>(in T source); //hopefully you just
+        /*
+        * if not i assume we just 
+        * => ref AsRef<T>((void*)source); //this doesn't work so idk
+        * & remove 'extern'
+        */
+
         public static ref T AsRef<T>(IntPtr pointer)
             => ref AsRef<T>((void*)pointer);
 
