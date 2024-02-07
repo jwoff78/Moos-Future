@@ -3,6 +3,7 @@ using MOOS;
 using MOOS.Driver;
 using MOOS.Misc;
 using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using static Internal.Runtime.CompilerHelpers.InteropHelpers;
 
@@ -33,9 +34,7 @@ public static class IDT
     private static IDTEntry[] idt;
     public static IDTDescriptor idtr;
 
-
     public static bool Initialized { get; private set; }
-
 
     public static unsafe bool Initialize()
     {

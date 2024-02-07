@@ -16,6 +16,7 @@ unsafe class Program
     [RuntimeExport("KMain")]
     static void KMain() 
     {
+        
         Console.Clear();
         Console.WriteLine("Now you are in MOOS-ConsoleOS!");
         //Alright so nint and nuint work

@@ -1,48 +1,5 @@
-using System;
-using System.Runtime.InteropServices;
-
-namespace Internal.Runtime
+﻿namespace Internal.Runtime
 {
-
-    [StructLayout(LayoutKind.Sequential)]
-    struct ModuleInfoRow
-    {
-        public ReadyToRunSectionType SectionId;
-        public int Flags;
-        public IntPtr Start;
-        public IntPtr End;
-
-        public bool HasEndPointer => !End.Equals(IntPtr.Zero);
-        public int Length => (int)((ulong)End - (ulong)Start);
-    }
-
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ReadyToRunHeaderConstants
-    {
-        public const uint Signature = 0x00525452; // 'RTR'
-
-        public const ushort CurrentMajorVersion = 4;
-        public const ushort CurrentMinorVersion = 1;
-    }
-
-#pragma warning disable 0169
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ReadyToRunHeader
-    {
-        public uint Signature;      // ReadyToRunHeaderConstants.Signature
-        public ushort MajorVersion;
-        public ushort MinorVersion;
-
-        public uint Flags;
-
-        public ushort NumberOfSections;
-        public byte EntrySize;
-        public byte EntryType;
-
-        // Array of sections follows.
-    };
-#pragma warning restore 0169
-
     //
     // ReadyToRunSectionType IDs are used by the runtime to look up specific global data sections
     // from each module linked into the final binary. New sections should be added at the bottom
@@ -94,11 +51,5 @@ namespace Internal.Runtime
         // Sections 300 - 399 are reserved for RhFindBlob backwards compatibility
         ReadonlyBlobRegionStart = 300,
         ReadonlyBlobRegionEnd = 399,
-    }
-
-    [Flags]
-    internal enum ModuleInfoFlags : int
-    {
-        HasEndPointer = 0x1,
     }
 }

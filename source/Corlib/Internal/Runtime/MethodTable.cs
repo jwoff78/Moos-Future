@@ -82,8 +82,6 @@ namespace Internal.Runtime
         private ushort _usNumInterfaces;
         private uint _uHashCode;
 
-        // vtable follows
-
         // These masks and paddings have been chosen so that the ValueTypePadding field can always fit in a byte of data.
         // if the alignment is 8 bytes or less. If the alignment is higher then there may be a need for more bits to hold
         // the rest of the padding data.
@@ -102,6 +100,8 @@ namespace Internal.Runtime
         [Intrinsic]
         internal static extern bool SupportsRelativePointers(); //get_
 
+        internal static bool SupportsWritableData => SupportsRelativePointers();
+
         internal ushort ComponentSize => _usComponentSize;
 
         internal ushort GenericArgumentCount => _usComponentSize;
@@ -115,7 +115,6 @@ namespace Internal.Runtime
         internal ushort NumInterfaces => _usNumInterfaces;
 
         internal uint HashCode => _uHashCode;
-
 
         private EETypeKind Kind
         {
@@ -292,15 +291,43 @@ namespace Internal.Runtime
 
         internal bool RequiresAlign8 => (RareFlags & EETypeRareFlags.RequiresAlign8Flag) != 0;
 
-        //IsIDynamicInterfaceCastable
+        internal bool IsIDynamicInterfaceCastable => (_usFlags & 0x40) != 0;
 
         internal bool IsValueType => ElementType < EETypeElementType.Class;
 
-        //IsPrimitive
+        internal bool IsPrimitive => ElementType < EETypeElementType.ValueType;
 
         internal bool HasGCPointers => ((_usFlags & (ushort)EETypeFlags.HasPointersFlag) != 0);
 
         internal bool IsHFA => (RareFlags & EETypeRareFlags.IsHFAFlag) != 0;
+
+        internal unsafe uint ValueTypeFieldPadding
+        {
+            get
+            {
+                byte* optionalFields = OptionalFieldsPtr;
+                if (optionalFields == null)
+                {
+                    return 0u;
+                }
+                uint ValueTypeFieldPaddingData = OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.ValueTypeFieldPadding, 0u);
+                uint padding = ValueTypeFieldPaddingData & 7u;
+                return padding | ((ValueTypeFieldPaddingData & 0xFFFFFF00u) >> 5);
+            }
+        }
+
+        //Debug.Assert(IsValueType);
+        internal unsafe uint ValueTypeSize => BaseSize - (uint)(sizeof(ObjHeader) + sizeof(MethodTable*) + (int)ValueTypeFieldPadding);
+
+        // This api is designed to return correct results for EETypes which can be derived from
+        // And results indistinguishable from correct for DefTypes which cannot be derived from (sealed classes)
+        // (For sealed classes, this should always return BaseSize-((uint)sizeof(ObjHeader));
+        // Debug.Assert(!IsInterface && !IsParameterizedType);
+
+        // get_BaseSize returns the GC size including space for the sync block index field, the EEType* and
+        // padding for GC heap alignment. Must subtract all of these to get the size used for the fields of
+        // the type (where the fields of the type includes the EEType*)
+        internal unsafe uint FieldByteCountNonGCAligned => BaseSize - (uint)(sizeof(ObjHeader) + (int)ValueTypeFieldPadding);
 
         //internal bool IsICastable {
         //	get {
@@ -364,48 +391,6 @@ namespace Internal.Runtime
         //	}
         //}
 
-        //internal uint ValueTypeFieldPadding {
-        //	get {
-        //		byte* optionalFields = OptionalFieldsPtr;
-
-        //		// If there are no optional fields then the padding must have been the default, 0.
-        //		if (optionalFields == null)
-        //			return 0;
-
-        //		// Get the value from the optional fields. The default is zero if that particular field was not included.
-        //		// The low bits of this field is the ValueType field padding, the rest of the byte is the alignment if present
-        //		uint ValueTypeFieldPaddingData = OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.ValueTypeFieldPadding, 0);
-        //		uint padding = ValueTypeFieldPaddingData & ValueTypePaddingLowMask;
-        //		// If there is additional padding, the other bits have that data
-        //		padding |= (ValueTypeFieldPaddingData & ValueTypePaddingHighMask) >> (ValueTypePaddingHighShift - ValueTypePaddingAlignmentShift);
-        //		return padding;
-        //	}
-        //}
-
-        //internal uint ValueTypeSize {
-        //	get {
-        //		Debug.Assert(IsValueType);
-        //		// get_BaseSize returns the GC size including space for the sync block index field, the EEType* and
-        //		// padding for GC heap alignment. Must subtract all of these to get the size used for locals, array
-        //		// elements or fields of another type.
-        //		return BaseSize - ((uint)sizeof(ObjHeader) + (uint)sizeof(EEType*) + ValueTypeFieldPadding);
-        //	}
-        //}
-
-        //internal uint FieldByteCountNonGCAligned {
-        //	get {
-        //		// This api is designed to return correct results for EETypes which can be derived from
-        //		// And results indistinguishable from correct for DefTypes which cannot be derived from (sealed classes)
-        //		// (For sealed classes, this should always return BaseSize-((uint)sizeof(ObjHeader));
-        //		Debug.Assert(!IsInterface && !IsParameterizedType);
-
-        //		// get_BaseSize returns the GC size including space for the sync block index field, the EEType* and
-        //		// padding for GC heap alignment. Must subtract all of these to get the size used for the fields of
-        //		// the type (where the fields of the type includes the EEType*)
-        //		return BaseSize - ((uint)sizeof(ObjHeader) + ValueTypeFieldPadding);
-        //	}
-        //}
-
         internal unsafe EEInterfaceInfo* InterfaceMap 
         {
         	get 
@@ -447,26 +432,39 @@ namespace Internal.Runtime
         }
 
         //TODO: DispatchMap & TypeManager do not exist
-        //internal DispatchMap* DispatchMap {
-        //	get {
-        //		if (NumInterfaces == 0)
-        //			return null;
-        //		byte* optionalFields = OptionalFieldsPtr;
-        //		if (optionalFields == null)
-        //			return null;
-        //		uint idxDispatchMap = OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.DispatchMap, 0xffffffff);
-        //		if (idxDispatchMap == 0xffffffff && IsDynamicType) {
-        //			if (HasDynamicallyAllocatedDispatchMap) {
-        //				fixed (EEType* pThis = &this)
-        //					return *(DispatchMap**)((byte*)pThis + GetFieldOffset(EETypeField.ETF_DynamicDispatchMap));
-        //			}
-        //			else
-        //				return DynamicTemplateType->DispatchMap;
-        //		}
+        internal unsafe DispatchMap* DispatchMap 
+        {
+        	get 
+            {
+        		if (NumInterfaces == 0)
+        			return null;
 
-        //		return ((DispatchMap**)TypeManager.DispatchMap)[idxDispatchMap];
-        //	}
-        //}
+        		byte* optionalFields = OptionalFieldsPtr;
+
+        		if (optionalFields == null)
+        			return null;
+
+        		uint idxDispatchMap = OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.DispatchMap, uint.MaxValue);
+
+        		if (idxDispatchMap == uint.MaxValue && IsDynamicType) 
+                {
+        			if (HasDynamicallyAllocatedDispatchMap) 
+                    {
+        				fixed (MethodTable* pThis = &this)
+        					return *(DispatchMap**)((byte*)pThis + GetFieldOffset(EETypeField.ETF_DynamicDispatchMap));
+        			}
+        			
+        			return DynamicTemplateType->DispatchMap;
+        		}
+
+                if (SupportsRelativePointers())
+                {
+                    return (DispatchMap*)(void*)FollowRelativePointer((int*)((byte*)(void*)TypeManager.DispatchMap + (long)idxDispatchMap * 4L));
+                }
+
+        		return ((DispatchMap**)TypeManager.DispatchMap)[idxDispatchMap];
+        	}
+        }
 
         // Get the address of the finalizer method for finalizable types.
         internal IntPtr FinalizerCode 
@@ -538,18 +536,11 @@ namespace Internal.Runtime
         	}
         }
 
+        // Debug.Assert(!IsParameterizedType, "array type not supported in NonArrayBaseType");
+        // Debug.Assert(!IsCloned, "cloned type not supported in NonClonedNonArrayBaseType");
+        // Debug.Assert(IsCanonical, "we expect canonical types here");
+        // Debug.Assert(!IsRelatedTypeViaIAT, "Non IAT");
         internal unsafe MethodTable* RawBaseType => _relatedType._pBaseType;
-        //{
-        // get
-        // {
-        //Debug.Assert(!IsParameterizedType, "array type not supported in NonArrayBaseType");
-        //Debug.Assert(!IsCloned, "cloned type not supported in NonClonedNonArrayBaseType");
-        //Debug.Assert(IsCanonical, "we expect canonical types here");
-        //Debug.Assert(!IsRelatedTypeViaIAT, "Non IAT");
-
-        //return _relatedType._pBaseType;
-        // }
-        // }
 
         internal unsafe MethodTable* CanonicalEEType 
         {
@@ -563,15 +554,9 @@ namespace Internal.Runtime
         	}
         }
 
+        // Debug.Assert(IsNullable);
+        // Debug.Assert(GenericArity == 1);
         internal unsafe MethodTable* NullableType => GenericArguments->Value;
-
-        //internal EEType* NullableType {
-        //	get {
-        //		Debug.Assert(IsNullable);
-        //		Debug.Assert(GenericArity == 1);
-        //		return GenericArguments[0].Value;
-        //	}
-        //}
 
         ///// <summary>
         ///// Gets the offset of the value embedded in a Nullable&lt;T&gt;.
@@ -632,87 +617,121 @@ namespace Internal.Runtime
         		}
         	}
         }
+       
+      	internal unsafe IntPtr DynamicGcStaticsData
+        {
+            get
+            {
+                //Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
+                fixed (MethodTable* pThis = &this)
+                {
+                    return *(IntPtr*)((byte*)pThis + cbOffset);
+                }
+            }
+        }
+       
+        internal unsafe IntPtr DynamicNonGcStaticsData
+        {
+            get
+            {
+                //Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0);
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
+                fixed (MethodTable* pThis = &this)
+                {
+                    return *(IntPtr*)((byte*)pThis + cbOffset);
+                }
+            }
+        }
 
-        //internal IntPtr DynamicGcStaticsData {
-        //	get {
-        //		Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithGcStatics) != 0);
-        //		uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicGcStatics);
-        //		fixed (EEType* pThis = &this) {
-        //			return (IntPtr)((byte*)pThis + cbOffset);
-        //		}
-        //	}
-        //}
+        internal unsafe IntPtr DynamicThreadStaticsIndex
+        {
+            get
+            {
+                uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicThreadStaticOffset);
+                fixed (MethodTable* pThis = &this)
+                {
+                    return *(IntPtr*)((byte*)pThis + cbOffset);
+                }
+            }
+        }
 
-        //internal IntPtr DynamicNonGcStaticsData {
-        //	get {
-        //		Debug.Assert((RareFlags & EETypeRareFlags.IsDynamicTypeWithNonGcStatics) != 0);
-        //		uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicNonGcStatics);
-        //		fixed (EEType* pThis = &this) {
-        //			return (IntPtr)((byte*)pThis + cbOffset);
-        //		}
-        //	}
-        //}
+        internal unsafe DynamicModule* DynamicModule 
+        {
+        	get 
+            {
+        		if ((RareFlags & EETypeRareFlags.HasDynamicModuleFlag) != 0) 
+                {
+        			uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
+        			fixed (MethodTable* pThis = &this) 
+                    {
+        				return *(DynamicModule**)((byte*)pThis + cbOffset);
+        			}
+        		}
+        		
+        		return null;
+        	}
+        }
 
-        //DynamicThreadStaticsIndex
+        internal unsafe TypeManagerHandle TypeManager 
+        {
+        	get 
+            {
+                IntPtr typeManagerIndirection = ((!IsDynamicType && SupportsRelativePointers()) ? GetField<RelativePointer>(EETypeField.ETF_TypeManagerIndirection).Value : GetField<Pointer>(EETypeField.ETF_TypeManagerIndirection).Value);
+                return *(TypeManagerHandle*)(void*)typeManagerIndirection;
+            }
+        }
 
-        //internal DynamicModule* DynamicModule {
-        //	get {
-        //		if ((RareFlags & EETypeRareFlags.HasDynamicModuleFlag) != 0) {
-        //			uint cbOffset = GetFieldOffset(EETypeField.ETF_DynamicModule);
-        //			fixed (EEType* pThis = &this) {
-        //				return *(DynamicModule**)((byte*)pThis + cbOffset);
-        //			}
-        //		}
-        //		else {
-        //			return null;
-        //		}
-        //	}
-        //}
-
-        //internal TypeManagerHandle TypeManager {
-        //	get {
-        //		IntPtr typeManagerIndirection;
-        //		if (IsDynamicType || !SupportsRelativePointers)
-        //			typeManagerIndirection = GetField<Pointer>(EETypeField.ETF_TypeManagerIndirection).Value;
-        //		else
-        //			typeManagerIndirection = GetField<RelativePointer>(EETypeField.ETF_TypeManagerIndirection).Value;
-
-        //		return *(TypeManagerHandle*)typeManagerIndirection;
-        //	}
-        //}
-
-        //WritableData
+        internal IntPtr WritableData
+        {
+            get
+            {
+                uint offset = GetFieldOffset(EETypeField.ETF_WritableData);
+                if (!IsDynamicType)
+                {
+                    return GetField<RelativePointer>(offset).Value;
+                }
+                return GetField<Pointer>(offset).Value;
+            }
+        }
 
         internal unsafe EETypeRareFlags RareFlags 
         {
         	get 
             {
-        		// If there are no optional fields then none of the rare flags have been set.
-        		// Get the flags from the optional fields. The default is zero if that particular field was not included.
-        		return HasOptionalFields ? (EETypeRareFlags)OptionalFieldsReader.GetInlineField(OptionalFieldsPtr, EETypeOptionalFieldTag.RareFlags, 0u) : (EETypeRareFlags)0;
-        	}
+                if (!HasOptionalFields)
+                {
+                    return (EETypeRareFlags)0;
+                }
+                return (EETypeRareFlags)OptionalFieldsReader.GetInlineField(OptionalFieldsPtr, EETypeOptionalFieldTag.RareFlags, 0u);
+                // If there are no optional fields then none of the rare flags have been set.
+                // Get the flags from the optional fields. The default is zero if that particular field was not included.
+                //return HasOptionalFields ? (EETypeRareFlags)OptionalFieldsReader.GetInlineField(OptionalFieldsPtr, EETypeOptionalFieldTag.RareFlags, 0u) : (EETypeRareFlags)0;
+            }
         }
 
-        //internal int FieldAlignmentRequirement {
-        //	get {
-        //		byte* optionalFields = OptionalFieldsPtr;
+        internal unsafe int FieldAlignmentRequirement 
+        {
+        	get 
+            {
+        		byte* optionalFields = OptionalFieldsPtr;
 
-        //		// If there are no optional fields then the alignment must have been the default, IntPtr.Size. 
-        //		// (This happens for all reference types, and for valuetypes with default alignment and no padding)
-        //		if (optionalFields == null)
-        //			return IntPtr.Size;
+        		// If there are no optional fields then the alignment must have been the default, IntPtr.Size. 
+        		// (This happens for all reference types, and for valuetypes with default alignment and no padding)
+        		if (optionalFields == null)
+        			return IntPtr.Size;
 
-        //		// Get the value from the optional fields. The default is zero if that particular field was not included.
-        //		// The low bits of this field is the ValueType field padding, the rest of the value is the alignment if present
-        //		uint alignmentValue = (OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.ValueTypeFieldPadding, 0) & ValueTypePaddingAlignmentMask) >> ValueTypePaddingAlignmentShift;
+        		// Get the value from the optional fields. The default is zero if that particular field was not included.
+        		// The low bits of this field is the ValueType field padding, the rest of the value is the alignment if present
+        		uint alignmentValue = (OptionalFieldsReader.GetInlineField(optionalFields, EETypeOptionalFieldTag.ValueTypeFieldPadding, 0u) & ValueTypePaddingAlignmentMask) >> ValueTypePaddingAlignmentShift;
 
-        //		// Alignment is stored as 1 + the log base 2 of the alignment, except a 0 indicates standard pointer alignment.
-        //		if (alignmentValue == 0)
-        //			return IntPtr.Size;
-        //		else
-        //			return 1 << ((int)alignmentValue - 1);
-        //	}
-        //}
+        		// Alignment is stored as 1 + the log base 2 of the alignment, except a 0 indicates standard pointer alignment.
+        		if (alignmentValue == 0)
+        			return IntPtr.Size;
+        		
+        		return 1 << ((int)alignmentValue - 1);
+        	}
+        }
 
         internal /*readonly*/ EETypeElementType ElementType
             => (EETypeElementType)((_usFlags & (ushort)EETypeFlags.ElementTypeMask) >> (ushort)EETypeFlags.ElementTypeShift);
@@ -731,7 +750,7 @@ namespace Internal.Runtime
 
         //Unimplemented at the time
         //internal unsafe IntPtr GetClasslibFunction(ClassLibFunctionId id)
-        //    => (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((MethodTable*)Unsafe.AsPointer(ref this), id);
+         //   => (IntPtr)InternalCalls.RhpGetClasslibFunctionFromEEType((MethodTable*)Unsafe.AsPointer(ref this), id);
 
         internal unsafe void SetToCloneOf(MethodTable* pOrigType)
         {
@@ -794,8 +813,8 @@ namespace Internal.Runtime
             return false;
         }
 
-        //[Intrinsic]
-        //internal unsafe static extern MethodTable* Of<T>();
+        [Intrinsic]
+        internal unsafe static extern MethodTable* Of<T>();
 
         internal unsafe IntPtr* GetVTableStartAddress()
         {
@@ -948,34 +967,6 @@ namespace Internal.Runtime
             return ref Unsafe.As<byte, T>(ref ((byte*)Unsafe.AsPointer(ref this))[offset]);
         }
     }
-
-    
-
-    //[StructLayout(LayoutKind.Sequential)]
-    //internal struct DynamicModule {
-    //	// Size field used to indicate the number of bytes of this structure that are defined in Runtime Known ways
-    //	// This is used to drive versioning of this field
-    //	private int _cbSize;
-
-    //	// Pointer to interface dispatch resolver that works off of a type/slot pair
-    //	// This is a function pointer with the following signature IntPtr()(IntPtr targetType, IntPtr interfaceType, ushort slot)
-    //	private IntPtr _dynamicTypeSlotDispatchResolve;
-
-    //	// Starting address for the the binary module corresponding to this dynamic module.
-    //	private IntPtr _getRuntimeException;
-
-    //	public IntPtr DynamicTypeSlotDispatchResolve {
-    //		get {
-    //			unsafe {
-    //				if (_cbSize >= sizeof(IntPtr) * 2) {
-    //					return _dynamicTypeSlotDispatchResolve;
-    //				}
-    //				else {
-    //					return IntPtr.Zero;
-    //				}
-    //			}
-    //		}
-    //	}
 
     //	public IntPtr GetRuntimeException {
     //		get {
