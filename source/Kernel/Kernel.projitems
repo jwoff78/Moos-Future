@@ -84,4 +84,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)strings.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VHD.cs" />
   </ItemGroup>
+  <ItemGroup>
+    <Content Include="$(MSBuildThisFileDirectory)HAL\HAL-Readme.txt" />
+  </ItemGroup>
 </Project>

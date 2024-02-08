@@ -1,6 +1,6 @@
 ﻿namespace System
 {
-    public abstract class Exception
+    public class Exception
     {
         private string _exceptionString;
 
@@ -13,5 +13,7 @@
         {
             _exceptionString = str;
         }
+
+        //public string ExceptionString => _exceptionString;
     }
 }

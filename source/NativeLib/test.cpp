@@ -1,5 +1,9 @@
 #include "..\LibC\printf.h"
 
+//void TriggerBreakpoint() {
+//	extern intr();
+//}
+
 void test()
 {
 	int i = 0x2000;
