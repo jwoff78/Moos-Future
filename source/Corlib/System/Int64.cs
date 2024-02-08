@@ -2,10 +2,13 @@
 {
 	public unsafe struct Int64
 	{
-		public const long MaxValue = 0x7FFFFFFFFFFFFFFF;
-		public const long MinValue = -0x8000000000000000;
+        private long _value;
 
-		public override string ToString()
+        public const long MaxValue = 9223372036854775807L;
+
+        public const long MinValue = -9223372036854775808L;
+
+        public override string ToString()
 		{
 			long val = this;
 			bool isNeg = BitHelpers.IsBitSet(val, 63);

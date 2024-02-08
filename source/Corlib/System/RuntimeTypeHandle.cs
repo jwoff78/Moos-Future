@@ -1,13 +1,21 @@
 
+using System.Runtime.CompilerServices;
+
 namespace System
 {
     public struct RuntimeTypeHandle 
     {
-        IntPtr Value;
+        private EETypePtr _pEEType;
 
         public RuntimeTypeHandle(EETypePtr ptr)
         {
-            Value = ptr.RawValue;
+            _pEEType = _pEEType;
+        }
+
+        [Intrinsic]
+        internal unsafe static IntPtr GetValueInternal(RuntimeTypeHandle handle)
+        {
+            return (IntPtr)handle._pEEType.ToPointer();
         }
     }
 }

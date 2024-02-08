@@ -1,10 +1,16 @@
 
+using System.Runtime;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace System.Diagnostics
 {
     public static class Debug
     {
+        //temp
+        [DllImport("*")]
+        private static extern void Panic(string message);
+
         public static void WriteLine(string s) 
         {
             for(int i = 0; i < s.Length; i++) 
@@ -32,6 +38,27 @@ namespace System.Diagnostics
                 DebugWrite(s[i]);
             }
             s.Dispose();
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        [Conditional("DEBUG")]
+        internal static void Assert(bool condition, string message)
+        {
+            if (!condition)
+            {
+                //RhFailFastReason.InternalError = 1
+                Panic("InternalError");
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        [Conditional("DEBUG")]
+        internal static void Assert(bool condition)
+        {
+            if (!condition)
+            {
+                Panic("InternalError");
+            }
         }
 
         [DllImport("*")]

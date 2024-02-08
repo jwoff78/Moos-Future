@@ -16,8 +16,16 @@ unsafe class Program
     [RuntimeExport("KMain")]
     static void KMain() 
     {
+        
         Console.Clear();
         Console.WriteLine("Now you are in MOOS-ConsoleOS!");
+        //Alright so nint and nuint work
+        nint e = 10;
+        nuint f = 10;
+        Console.WriteLine("e = " + e.ToString() + ", " + "f = " + f.ToString());
+        //In order to write a debugger class we need to fix launching mechinsm
+        //And maybe enable vmware debug mode
+        //Serial.WriteLine("Now you are in MOOS-ConsoleOS!");
         for(; ; ) 
         {
             string s = Console.ReadLine();

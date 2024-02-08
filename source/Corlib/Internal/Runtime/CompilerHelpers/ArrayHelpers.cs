@@ -4,7 +4,7 @@
 using Internal.Runtime.CompilerServices;
 using System;
 using System.Runtime;
-
+using System.Runtime.CompilerServices;
 using Debug = System.Diagnostics.Debug;
 
 namespace Internal.Runtime.CompilerHelpers
@@ -26,7 +26,7 @@ namespace Internal.Runtime.CompilerHelpers
 
             if (eeType.IsSzArray)
             {
-                var v = StartupCodeHelpers.RhpNewArray(eeType.Value, pDimensions[0]);
+                var v = StartupCodeHelpers.RhpNewArray(eeType._value, pDimensions[0]);
                 Array ret = Unsafe.As<object, Array>(ref v);
 
                 if (nDimensions > 1)

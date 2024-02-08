@@ -1,5 +1,7 @@
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
+using Internal.Runtime;
 using Internal.Runtime.CompilerHelpers;
 using Internal.Runtime.CompilerServices;
 
@@ -83,7 +85,7 @@ namespace System
 				totalLength *= (ulong)length;
 			}
 
-			object v = StartupCodeHelpers.RhpNewArray(eeType.Value, (int)totalLength);
+			object v = StartupCodeHelpers.RhpNewArray(eeType._value, (int)totalLength);
 			Array ret = Unsafe.As<object, Array>(ref v);
 
 			ref int bounds = ref ret.GetRawMultiDimArrayBounds();
@@ -96,7 +98,8 @@ namespace System
 		}
 
 		public int Length
-		{
+		{//This might be better
+         //(int)Unsafe.As<RawArrayData>(this).Length;
             get
             {
 				return _numComponents;
@@ -107,8 +110,14 @@ namespace System
             }
 		}
 
+        [RuntimeExport("GetSystemArrayEEType")]
+        private unsafe static MethodTable* GetSystemArrayEEType()
+        {
+            return EETypePtr.EETypePtrOf<Array>().ToPointer();
+        }
+
 #nullable enable
-		public object? this[int i]
+        public object? this[int i]
 #nullable disable
 		{
 			get => GetValue(i);

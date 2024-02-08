@@ -84,7 +84,7 @@ namespace System
 			EETypePtr et = EETypePtr.EETypePtrOf<string>();
 
 			char* start = ptr + index;
-			object data = StartupCodeHelpers.RhpNewArray(et.Value, length);
+			object data = StartupCodeHelpers.RhpNewArray(et._value, length);
 			string s = Unsafe.As<object, string>(ref data);
 
 			fixed (char* c = &s._firstChar)

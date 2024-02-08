@@ -5,13 +5,15 @@ namespace System
 {
     public unsafe struct EETypePtr
     {
-        internal EEType* Value;
+        //In better theory this should be private, i'll get to that later affected classes:
+        // ArrayHelpers.cs, Array.cs, String.cs
+        internal MethodTable* _value;
 
         public bool IsSzArray 
         {
             get 
             {
-                return Value->IsSzArray;
+                return _value->IsSzArray;
             }
         }
 
@@ -19,7 +21,7 @@ namespace System
         {
             get 
             {
-                return new EETypePtr(Value->RelatedParameterType);
+                return new EETypePtr(_value->RelatedParameterType);
             }
         }
 
@@ -27,7 +29,7 @@ namespace System
         {
             get
             {
-                return Value->ArrayRank;
+                return _value->ArrayRank;
             }
         }
 
@@ -35,18 +37,28 @@ namespace System
         {
             get 
             {
-                return (IntPtr)Value;
+                return (IntPtr)_value;
             }
         }
 
         public EETypePtr(IntPtr value)
         {
-            Value = (EEType*)value;
+            _value = (MethodTable*)value;
         }
 
-        public EETypePtr(EEType* value)
+        public EETypePtr(MethodTable* value)
         {
-            Value = value;
+            _value = value;
+        }
+
+        public bool Equals(EETypePtr ptr)
+        {
+            return _value == ptr._value;
+        }
+
+        public unsafe MethodTable* ToPointer()
+        {
+            return (MethodTable*)(void*)_value;
         }
 
         [Intrinsic]
