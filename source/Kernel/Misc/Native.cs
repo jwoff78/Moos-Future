@@ -96,4 +96,7 @@ static unsafe class Native
 
     [DllImport("*")]
     public static extern void Wrmsr(ulong index, ulong value);
+
+    //[DllImport("*")]
+    //public static extern void TriggerBreakpoint();
 }

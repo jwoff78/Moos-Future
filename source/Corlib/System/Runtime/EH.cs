@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MOOS;
+using System;
 using System.Diagnostics;
 using System.Runtime;
 using System.Runtime.InteropServices;
@@ -145,15 +146,32 @@ namespace System
 
         //[RuntimeExport("RhExceptionHandling_FailedAllocation")]
         //public unsafe static void FailedAllocation(EETypePtr pEEType, bool fIsOverflow)
+        //RhThrowHwEx
+        [RuntimeExport("RhpThrowHwEx")]
+        public unsafe static void RhThrowHwEx(uint exceptionCode, ref ExInfo exInfo)
+        {
+            intr3();
+        }
 
-        //[RuntimeExport("RhThrowHwEx")]
-        //public unsafe static void RhThrowHwEx(uint exceptionCode, ref ExInfo exInfo)
+        //RhThrowEx
+        [RuntimeExport("RhpThrowEx")]
+        public unsafe static void RhThrowEx(object exceptionObj, ref ExInfo exInfo)
+        {
+            /*
+             if you come in here you can most likely interrupt this and continue after something is serial port (ed)
+             */
+            intr3();
+        }
 
-        //[RuntimeExport("RhThrowEx")]
-        //public unsafe static void RhThrowEx(object exceptionObj, ref ExInfo exInfo)
+        //RhRethrow
+        [RuntimeExport("RhpRethrow")]
+        public static void RhRethrow(ref ExInfo activeExInfo, ref ExInfo exInfo)
+        {
+            intr3();
+        }
 
-        //[RuntimeExport("RhRethrow")]
-        //public static void RhRethrow(ref ExInfo activeExInfo, ref ExInfo exInfo)
+        [DllImport("*")]
+        public static extern void intr3();
 
         //private unsafe static void DispatchEx([ScopedRef] ref StackFrameIterator frameIter, ref ExInfo exInfo, uint startIdx)
 

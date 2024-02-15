@@ -6,6 +6,10 @@ using System.Runtime.InteropServices;
 /* I don't expect this to just *work* but everything's worth a try.. it does from from IlCompiler after all */
 namespace System.Runtime
 {
+    internal static class InternalCalls
+    {
+
+    }
     /*
     internal static class InternalCalls
     {
